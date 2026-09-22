@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GIS Provinsi Papua Barat Daya - Dashboard Spasial & Statistik</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js for interactive analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        papua: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                            900: '#14532d',
+                        },
+                        ocean: {
+                            50: '#f0f9ff',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            900: '#0c4a6e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .region-node {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .region-node:hover {
+            filter: brightness(1.15);
+            transform: scale(1.02);
+        }
+        .pulse-beacon {
+            animation: pulse-ring 2s infinite;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.15); opacity: 0.4; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+
+    <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-50 border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-green-600 to-emerald-400 flex items-center justify-center shadow-md">
+                    <i class="fa-solid fa-earth-asia text-white text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg sm:text-xl tracking-tight flex items-center gap-2">
+                        GIS Papua Barat Daya <span class="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-medium">Resmi v2.5</span>
+                    </h1>
+                    <p class="text-xs text-slate-400 hidden sm:block">Sistem Informasi Geospasial & Analisis Regional 6 Wilayah</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-3">
+                <div class="hidden md:flex items-center space-x-2 text-xs bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                    <span class="text-slate-300">Live Server Geospasial</span>
+                </div>
+                <button onclick="openInfoModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-all shadow-sm flex items-center gap-2">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <span>Panduan GIS</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        
+        <!-- Control Bar & Filters -->
+        <section class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <div class="flex items-center space-x-2">
+                    <label for="regionSelect" class="text-xs font-semibold uppercase tracking-wider text-slate-500">Pilih Wilayah:</label>
+                    <select id="regionSelect" onchange="handleRegionDropdownChange(this.value)" class="bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block p-2.5 font-medium outline-none">
+                        <option value="all">🌐 Tampilkan Semua (Provinsi PBD)</option>
+                        <option value="kota_sorong">🏙️ Kota Sorong (Pusat Pemerintahan)</option>
+                        <option value="kab_sorong">🏭 Kabupaten Sorong (KEK Aimas)</option>
+                        <option value="raja_ampat">🏝️ Kabupaten Raja Ampat (Pariwisata Bahari)</option>
+                        <option value="sorong_selatan">🌾 Kabupaten Sorong Selatan (Agro & Sagu)</option>
+                        <option value="maybrat">⛰️ Kabupaten Maybrat (Danau & Pegunungan)</option>
+                        <option value="tambrauw">🛡️ Kabupaten Tambrauw (Wilayah Konservasi)</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center space-x-2">
+                    <label for="layerSelect" class="text-xs font-semibold uppercase tracking-wider text-slate-500">Layer Tematik:</label>
+                    <select id="layerSelect" onchange="switchLayer(this.value)" class="bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block p-2.5 font-medium outline-none">
+                        <option value="admin">🗺️ Batas Administrasi & Pusat</option>
+                        <option value="marine">⚓ Pariwisata Bahari & Konservasi</option>
+                        <option value="forestry">🌲 Kehutanan & Taman Nasional</option>
+                        <option value="industry">⚙️ Industri, KEK & Infrastruktur</option>
+                        <option value="density">👥 Kepadatan & Demografi Penduduk</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 justify-end">
+                <button onclick="resetMapView()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3.5 py-2.5 rounded-lg transition-all flex items-center gap-1.5 border border-slate-300">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    <span>Reset Tampilan</span>
+                </button>
+                <button onclick="toggleDataTableView()" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold px-3.5 py-2.5 rounded-lg transition-all flex items-center gap-1.5 border border-emerald-200">
+                    <i class="fa-solid fa-table"></i>
+                    <span id="toggleTableText">Buka Tabel Data</span>
+                </button>
+            </div>
+        </section>
+
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Luas Wilayah</p>
+                    <h3 class="text-2xl font-bold text-slate-800 mt-1">39.126 <span class="text-sm font-normal text-slate-500">km²</span></h3>
+                    <p class="text-xs text-emerald-600 font-medium mt-1"><i class="fa-solid fa-arrow-up"></i> 6 Kabupaten / Kota</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-map"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Penduduk (2025/2026)</p>
+                    <h3 class="text-2xl font-bold text-slate-800 mt-1">612.450 <span class="text-sm font-normal text-slate-500">Jiwa</span></h3>
+                    <p class="text-xs text-emerald-600 font-medium mt-1"><i class="fa-solid fa-chart-line"></i> Laju Pertumbuhan 2.1%</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-users"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Kawasan Konservasi</p>
+                    <h3 class="text-2xl font-bold text-slate-800 mt-1">2.4 Juta <span class="text-sm font-normal text-slate-500">Ha</span></h3>
+                    <p class="text-xs text-cyan-600 font-medium mt-1"><i class="fa-solid fa-shield-halved"></i> Terumbu Karang & Hutan</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-tree"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Sektor Unggulan PDB</p>
+                    <h3 class="text-xl font-bold text-slate-800 mt-1">Pariwisata & Migas</h3>
+                    <p class="text-xs text-amber-600 font-medium mt-1"><i class="fa-solid fa-bolt"></i> KEK Aimas & Raja Ampat</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-briefcase"></i>
+                </div>
+            </div>
+        </section>
+
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Map Canvas & SVG Container -->
+            <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-col">
+                <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                    <div>
+                        <h2 class="font-bold text-base text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-map-location-dot text-emerald-600"></i> Peta Interaktif Spasial Papua Barat Daya
+                        </h2>
+                        <p class="text-xs text-slate-500" id="mapSubtitle">Klik pada wilayah administratif untuk melihat profil dan data mendalam</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span id="activeLayerBadge" class="text-xs bg-emerald-100 text-emerald-800 font-semibold px-2.5 py-1 rounded-md">Layer: Batas Administrasi</span>
+                    </div>
+                </div>
+
+                <!-- SVG Interactive Map -->
+                <div class="relative bg-slate-900 rounded-xl overflow-hidden flex-1 min-h-[420px] flex items-center justify-center border border-slate-800 shadow-inner group">
+                    <div class="absolute inset-0 bg-[radial-gradient(#334155_1px,transparent_1px)] [background-size:16px_16px] opacity-30"></div>
+                    
+                    <!-- SVG Map of 6 Regencies -->
+                    <svg viewBox="0 0 1000 650" class="w-full h-full max-h-[500px] z-10 select-none transition-transform duration-500" id="interactiveMapSvg">
+                        <!-- Tambrauw (North-West Large Conservation Area) -->
+                        <g class="region-node" onclick="selectRegion('tambrauw')" onmouseenter="highlightInfo('tambrauw')" onmouseleave="clearHighlight()">
+                            <path d="M 120 120 L 320 80 L 450 140 L 410 260 L 220 280 L 120 120 Z" fill="#0d9488" fill-opacity="0.6" stroke="#5eead4" stroke-width="2.5"/>
+                            <circle cx="280" cy="180" r="8" fill="#facc15" class="pulse-beacon"/>
+                            <text x="250" y="175" fill="#ffffff" font-size="13" font-weight="bold" class="drop-shadow">Kab. Tambrauw</text>
+                        </g>
+
+                        <!-- Raja Ampat (Islands in West) -->
+                        <g class="region-node" onclick="selectRegion('raja_ampat')" onmouseenter="highlightInfo('raja_ampat')" onmouseleave="clearHighlight()">
+                            <path d="M 40 180 L 140 160 L 160 300 L 70 320 Z" fill="#0284c7" fill-opacity="0.6" stroke="#7dd3fc" stroke-width="2.5"/>
+                            <circle cx="100" cy="240" r="8" fill="#facc15" class="pulse-beacon"/>
+                            <text x="65" y="235" fill="#ffffff" font-size="13" font-weight="bold" class="drop-shadow">Raja Ampat</text>
+                        </g>
+
+                        <!-- Kota Sorong (Small urban node) -->
+                        <g class="region-node" onclick="selectRegion('kota_sorong')" onmouseenter="highlightInfo('kota_sorong')" onmouseleave="clearHighlight()">
+                            <path d="M 230 290 L 290 280 L 300 330 L 220 340 Z" fill="#7c3aed" fill-opacity="0.7" stroke="#c4b5fd" stroke-width="2.5"/>
+                            <circle cx="260" cy="310" r="8" fill="#facc15" class="pulse-beacon"/>
+                            <text x="220" y="305" fill="#ffffff" font-size="12" font-weight="bold" class="drop-shadow">Kota Sorong</text>
+                        </g>
+
+                        <!-- Kabupaten Sorong (Surrounding Kota Sorong) -->
+                        <g class="region-node" onclick="selectRegion('kab_sorong')" onmouseenter="highlightInfo('kab_sorong')" onmouseleave="clearHighlight()">
+                            <path d="M 305 270 L 440 275 L 430 380 L 310 390 Z" fill="#16a34a" fill-opacity="0.6" stroke="#86efac" stroke-width="2.5"/>
+                            <circle cx="370" cy="330" r="8" fill="#facc15" class="pulse-beacon"/>
+                            <text x="330" y="325" fill="#ffffff" font-size="13" font-weight="bold" class="drop-shadow">Kab. Sorong</text>
+                        </g>
+
+                        <!-- Maybrat (Mountainous inland) -->
+                        <g class="region-node" onclick="selectRegion('maybrat')" onmouseenter="highlightInfo('maybrat')" onmouseleave="clearHighlight()">
+                            <path d="M 455 150 L 620 170 L 590 310 L 440 290 Z" fill="#d97706" fill-opacity="0.6" stroke="#fde047" stroke-width="2.5"/>
+                            <circle cx="520" cy="230" r="8" fill="#facc15" class="pulse-beacon"/>
+                            <text x="490" y="225" fill="#ffffff" font-size="13" font-weight="bold" class="drop-shadow">Kab. Maybrat</text>
+                        </g>
+
+                        <!-- Sorong Selatan (Southern plains & rivers) -->
+                        <g class="region-node" onclick="selectRegion('sorong_selatan')" onmouseenter="highlightInfo('sorong_selatan')" onmouseleave="clearHighlight()">
+                            <path d="M 315 400 L 580 325 L 610 490 L 330 480 Z" fill="#db2777" fill-opacity="0.6" stroke="#fbcfe8" stroke-width="2.5"/>
+                            <circle cx="450" cy="410" r="8" fill="#facc15" class="pulse-beacon"/>
+                            <text x="390" y="405" fill="#ffffff" font-size="13" font-weight="bold" class="drop-shadow">Sorong Selatan</text>
+                        </g>
+                    </svg>
+
+                    <!-- Map Legend Overlay -->
+                    <div class="absolute bottom-4 left-4 bg-slate-900/80 backdrop-blur-md p-3 rounded-xl border border-slate-700 text-white text-xs space-y-1.5 z-20">
+                        <p class="font-bold text-slate-300 border-b border-slate-700 pb-1 mb-1">Legenda Spasial</p>
+                        <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-purple-500"></span><span>Pusat Pemerintahan / Kota</span></div>
+                        <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-emerald-500"></span><span>Kawasan Industri / KEK</span></div>
+                        <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-sky-500"></span><span>Kawasan Bahari / Wisata</span></div>
+                        <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-teal-500"></span><span>Kawasan Konservasi & Adat</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Regional Quick Inspector Sidebar -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                        <h2 class="font-bold text-base text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-chart-pie text-emerald-600"></i> Inspektur Wilayah
+                        </h2>
+                        <span id="inspectorStatus" class="text-xs bg-slate-100 text-slate-600 font-medium px-2 py-0.5 rounded">Provinsi Keseluruhan</span>
+                    </div>
+
+                    <!-- Dynamic Card Content -->
+                    <div id="inspectorContent" class="space-y-4">
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                            <h3 class="font-bold text-slate-800 text-base" id="cardTitle">Provinsi Papua Barat Daya</h3>
+                            <p class="text-xs text-slate-500 mt-0.5" id="cardSubtitle">Daerah Otonom Baru (DOB) ke-38 di Indonesia</p>
+                            
+                            <div class="grid grid-cols-2 gap-3 mt-4">
+                                <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                                    <span class="text-[10px] font-semibold uppercase text-slate-400 block">Luas Wilayah</span>
+                                    <span class="text-sm font-bold text-slate-800" id="statArea">39.126 km²</span>
+                                </div>
+                                <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                                    <span class="text-[10px] font-semibold uppercase text-slate-400 block">Jumlah Penduduk</span>
+                                    <span class="text-sm font-bold text-slate-800" id="statPop">612.450 Jiwa</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Karakteristik & Potensi Utama</h4>
+                            <p class="text-xs text-slate-600 leading-relaxed bg-emerald-50/50 p-3 rounded-xl border border-emerald-100" id="cardDesc">
+                                Papua Barat Daya memiliki kekayaan hayati darat dan laut yang luar biasa, pusat industri logistik di Sorong, serta destinasi wisata selam kelas dunia di Raja Ampat.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 pt-4 border-t border-slate-100">
+                    <button id="detailModalBtn" onclick="openCurrentRegionModal()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 text-sm">
+                        <i class="fa-solid fa-file-lines"></i>
+                        <span>Buka Profil Lengkap & Grafik</span>
+                    </button>
+                </div>
+            </div>
+
+        </section>
+
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                <div class="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
+                    <h3 class="font-bold text-sm text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-bar text-emerald-600"></i> Perbandingan Jumlah Penduduk per Kabupaten/Kota
+                    </h3>
+                    <span class="text-[11px] text-slate-400 font-medium">BPS / Data Proyeksi</span>
+                </div>
+                <div class="h-64 relative">
+                    <canvas id="populationChart"></canvas>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                <div class="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
+                    <h3 class="font-bold text-sm text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-pie text-emerald-600"></i> Distribusi Luas Wilayah (km²)
+                    </h3>
+                    <span class="text-[11px] text-slate-400 font-medium">Persentase Spasial</span>
+                </div>
+                <div class="h-64 relative">
+                    <canvas id="areaChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <section id="dataTableSection" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 hidden">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5 pb-4 border-b border-slate-100">
+                <div>
+                    <h3 class="font-bold text-base text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-database text-emerald-600"></i> Matriks Data Statistik 6 Wilayah Papua Barat Daya
+                    </h3>
+                    <p class="text-xs text-slate-500">Data lengkap indikator kependudukan, luas wilayah, ibukota, dan sektor unggulan</p>
+                </div>
+                <div class="relative">
+                    <input type="text" id="tableSearchInput" onkeyup="filterDataTable()" placeholder="Cari wilayah/sektor..." class="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-lg pl-9 pr-4 py-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none w-full sm:w-64">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto custom-scrollbar">
+                <table class="w-full text-left text-xs text-slate-600">
+                    <thead class="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider">
+                        <tr>
+                            <th class="p-3 rounded-l-lg">Wilayah / Kabupaten</th>
+                            <th class="p-3">Ibukota</th>
+                            <th class="p-3">Luas (km²)</th>
+                            <th class="p-3">Penduduk (Jiwa)</th>
+                            <th class="p-3">Kepadatan (Jiwa/km²)</th>
+                            <th class="p-3">Sektor Ekonomi Utama</th>
+                            <th class="p-3 text-center rounded-r-lg">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="regionsTableBody" class="divide-y divide-slate-100 font-medium">
+                        <!-- Populated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-white border-t border-slate-200 py-6 mt-12 text-center text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <p>© 2026 GIS Provinsi Papua Barat Daya. Sistem Informasi Geospasial Terpadu.</p>
+            <div class="flex items-center space-x-4">
+                <a href="#" class="hover:text-emerald-600 transition-colors">Kebijakan Data</a>
+                <a href="#" class="hover:text-emerald-600 transition-colors">Metadata Spasial</a>
+                <a href="#" class="hover:text-emerald-600 transition-colors">Kontak BPS/Bappeda</a>
+            </div>
+        </div>
+    </footer>
+
+    <div id="regionModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden animate-fadeIn">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto custom-scrollbar border border-slate-200">
+            <div class="p-6 bg-gradient-to-r from-slate-900 to-slate-800 text-white flex items-center justify-between sticky top-0 z-10">
+                <div class="flex items-center space-x-3">
+                    <div id="modalIconBox" class="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-2xl border border-emerald-500/30">
+                        <i class="fa-solid fa-city"></i>
+                    </div>
+                    <div>
+                        <h3 id="modalTitle" class="text-xl font-bold">Nama Wilayah</h3>
+                        <p id="modalSubtitle" class="text-xs text-slate-300">Profil Administratif & Indikator Spasial</p>
+                    </div>
+                </div>
+                <button onclick="closeModal()" class="w-10 h-10 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-all border border-slate-700">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-6">
+                <!-- Stat Grid -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-center">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Luas Wilayah</span>
+                        <span id="modalArea" class="text-base font-bold text-slate-800 mt-1 block">0 km²</span>
+                    </div>
+                    <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-center">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Penduduk</span>
+                        <span id="modalPop" class="text-base font-bold text-slate-800 mt-1 block">0 Jiwa</span>
+                    </div>
+                    <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-center">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Kepadatan</span>
+                        <span id="modalDensity" class="text-base font-bold text-slate-800 mt-1 block">0 /km²</span>
+                    </div>
+                    <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-center">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Jumlah Distrik</span>
+                        <span id="modalDistricts" class="text-base font-bold text-slate-800 mt-1 block">0 Distrik</span>
+                    </div>
+                </div>
+
+                <!-- Description & Economy -->
+                <div class="space-y-3">
+                    <h4 class="font-bold text-sm text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-circle-info text-emerald-600"></i> Deskripsi & Karakteristik Wilayah
+                    </h4>
+                    <p id="modalDesc" class="text-xs text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                        Deskripsi rinci mengenai wilayah akan ditampilkan di sini.
+                    </p>
+                </div>
+
+                <!-- Economic Sectors -->
+                <div class="space-y-3">
+                    <h4 class="font-bold text-sm text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-briefcase text-emerald-600"></i> Sektor & Komoditas Unggulan
+                    </h4>
+                    <div id="modalSectors" class="flex flex-wrap gap-2">
+                        <!-- Sector badges inserted dynamically -->
+                    </div>
+                </div>
+
+                <!-- Coordinate Bounds -->
+                <div class="bg-emerald-50/60 p-4 rounded-2xl border border-emerald-100 flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center">
+                            <i class="fa-solid fa-compass"></i>
+                        </div>
+                        <div>
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block">Titik Pusat Koordinat</span>
+                            <span id="modalCoords" class="text-xs font-semibold text-slate-800">-0.8614° S, 131.2513° E</span>
+                        </div>
+                    </div>
+                    <span class="text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-lg font-medium">GPS Verifed</span>
+                </div>
+            </div>
+
+            <div class="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
+                <button onclick="closeModal()" class="bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold px-5 py-2.5 rounded-xl transition-all">
+                    Tutup Profil
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="infoModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden animate-fadeIn">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200">
+            <div class="p-6 bg-gradient-to-r from-emerald-700 to-teal-800 text-white flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white text-xl">
+                        <i class="fa-solid fa-circle-question"></i>
+                    </div>
+                    <h3 class="text-lg font-bold">Panduan Penggunaan GIS</h3>
+                </div>
+                <button onclick="closeInfoModal()" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4 text-xs text-slate-600 leading-relaxed">
+                <div class="flex items-start gap-3">
+                    <div class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 font-bold">1</div>
+                    <p><strong>Pilih Wilayah:</strong> Gunakan dropdown "Pilih Wilayah" di atas atau klik langsung pada area peta SVG untuk memfilter data per kabupaten/kota.</p>
+                </div>
+                <div class="flex items-start gap-3">
+                    <div class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 font-bold">2</div>
+                    <p><strong>Layer Tematik:</strong> Ganti jenis layer peta untuk melihat fokus tematik seperti batas administrasi, kawasan bahari, kehutanan, hingga kepadatan penduduk.</p>
+                </div>
+                <div class="flex items-start gap-3">
+                    <div class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 font-bold">3</div>
+                    <p><strong>Tabel Matriks & Grafik:</strong> Analisis perbandingan populasi dan luas wilayah secara visual melalui diagram interaktif Chart.js dan tabel lengkap di bagian bawah.</p>
+                </div>
+            </div>
+            <div class="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
+                <button onclick="closeInfoModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-all">
+                    Mengerti, Mulai Eksplorasi
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Database of 6 Regencies of Papua Barat Daya
+        const regionsData = {
+            all: {
+                name: "Provinsi Papua Barat Daya",
+                subtitle: "Daerah Otonom Baru (DOB) ke-38 di Indonesia",
+                area: "39.126 km²",
+                areaVal: 39126,
+                population: "612.450 Jiwa",
+                popVal: 612450,
+                density: "15.65 Jiwa/km²",
+                districts: "41 Distrik / 421 Kampung",
+                desc: "Provinsi Papua Barat Daya resmi dibentuk berdasarkan Undang-Undang Nomor 29 Tahun 2022, mencakup wilayah Kota Sorong, Kabupaten Sorong, Kabupaten Raja Ampat, Kabupaten Sorong Selatan, Kabupaten Maybrat, dan Kabupaten Tambrauw.",
+                sectors: ["Pariwisata Bahari", "Kawasan Ekonomi Khusus (KEK)", "Kehutanan & Konservasi", "Perikanan Tangkap", "Pertanian & Perkebunan"],
+                coords: "-0.8614° S, 131.2513° E",
+                icon: "fa-earth-asia"
+            },
+            kota_sorong: {
+                name: "Kota Sorong",
+                subtitle: "Pusat Pemerintahan & Gerbang Ekonomi Utama",
+                area: "1.105 km²",
+                areaVal: 1105,
+                population: "289.420 Jiwa",
+                popVal: 289420,
+                density: "261.92 Jiwa/km²",
+                districts: "10 Distrik",
+                desc: "Kota Sorong dikenal sebagai 'Kota Minyak' dan merupakan pusat perdagangan, jasa, pelabuhan laut utama, serta bandara internasional yang menghubungkan wilayah Papua Barat Daya ke seluruh Indonesia.",
+                sectors: ["Perdagangan & Jasa", "Pelabuhan Logistik", "Industri Pengolahan", "Pariwisata Perkotaan"],
+                coords: "-0.8762° S, 131.2553° E",
+                icon: "fa-city"
+            },
+            kab_sorong: {
+                name: "Kabupaten Sorong",
+                subtitle: "Pusat Kawasan Industri (KEK Aimas) & Agraria",
+                area: "65.361 km²",
+                areaVal: 65361,
+                population: "124.890 Jiwa",
+                popVal: 124890,
+                density: "1.91 Jiwa/km²",
+                districts: "30 Distrik",
+                desc: "Pusat pertumbuhan industri masa depan Papua Barat Daya dengan adanya Kawasan Ekonomi Khusus (KEK) Aimas, didukung sektor perkebunan kelapa sawit, migas, serta pertanian lahan basah.",
+                sectors: ["Kawasan Ekonomi Khusus (KEK)", "Migas & Pertambangan", "Perkebunan Sawit", "Pertanian Pangan"],
+                coords: "-1.0123° S, 131.4231° E",
+                icon: "fa-industry"
+            },
+            raja_ampat: {
+                name: "Kabupaten Raja Ampat",
+                subtitle: "Pusat Pariwisata Bahari & Konservasi Dunia",
+                area: "60.844 km² (Laut & Darat)",
+                areaVal: 60844,
+                population: "66.210 Jiwa",
+                popVal: 66210,
+                density: "1.08 Jiwa/km²",
+                districts: "24 Distrik",
+                desc: "Surga selam dunia dengan keanekaragaman hayati laut tertinggi di planet bumi. Kepulauan Raja Ampat menjadi primadona pariwisata internasional dengan gugusan pulau karang (karst) yang menakjubkan.",
+                sectors: ["Ekowisata Bahari", "Perikanan Tangkap Berkelanjutan", "Konservasi Laut", "Budidaya Mutiara"],
+                coords: "-0.2312° S, 130.5214° E",
+                icon: "fa-water"
+            },
+            sorong_selatan: {
+                name: "Kabupaten Sorong Selatan",
+                subtitle: "Pusat Perkebunan Sagu & Kekayaan Pesisir",
+                area: "7.781 km²",
+                areaVal: 7781,
+                population: "54.120 Jiwa",
+                popVal: 54120,
+                density: "6.95 Jiwa/km²",
+                districts: "15 Distrik",
+                desc: "Wilayah dengan hamparan hutan sagu terluas di Indonesia, memiliki potensi perairan darat yang kaya serta hasil hutan non-kayu yang menopang ketahanan pangan lokal.",
+                sectors: ["Kehutanan & Sagu", "Perikanan Air Tawar", "Perkebunan Rakyat", "Pariwisata Budaya"],
+                coords: -1.4521,
+                coordsStr: "1.4521° S, 132.1243° E",
+                icon: "fa-seedling"
+            },
+            maybrat: {
+                name: "Kabupaten Maybrat",
+                subtitle: "Kawasan Pegunungan, Danau Eksotis & Budaya",
+                area: "5.461 km²",
+                areaVal: 5461,
+                population: "44.310 Jiwa",
+                popVal: 44310,
+                density: "8.11 Jiwa/km²",
+                districts: "24 Distrik",
+                desc: "Terletak di wilayah dataran tinggi/pegunungan, Maybrat dikaruniai panorama alam danau yang jernih (seperti Danau Ayamaru), udara sejuk, serta tradisi adat istiadat suku Maybrat yang terjaga.",
+                sectors: ["Ekowisata Danau & Pegunungan", "Pertanian Hortikultura", "Peternakan", "Kerajinan Tradisional"],
+                coords: "-1.2314° S, 132.4521° E",
+                icon: "fa-mountain"
+            },
+            tambrauw: {
+                name: "Kabupaten Tambrauw",
+                subtitle: "Kabupaten Konservasi & Suaka Margasatwa",
+                area: "11.529 km²",
+                areaVal: 11529,
+                population: "28.500 Jiwa",
+                popVal: 28500,
+                density: "2.47 Jiwa/km²",
+                districts: "29 Distrik",
+                desc: "Ditetapkan sebagai Kabupaten Konservasi, Tambrauw memiliki bentang alam hutan primer yang luas, pantai penyu belimbing tempat bertelur, serta komitmen kuat menjaga kelestarian alam dan masyarakat adat.",
+                sectors: ["Konservasi Alam & Hutan", "Ekowisata Penyu & Burung Cendrawasih", "Kehutanan Lestari", "Pertanian Organik"],
+                coords: "-0.5412° S, 132.3142° E",
+                icon: "fa-shield-halved"
+            }
+        };
+
+        let currentSelectedRegion = 'all';
+        let popChartInstance = null;
+        let areaChartInstance = null;
+        let isTableOpen = false;
+
+        // Initialize Charts and Table on Window Load
+        window.onload = function() {
+            initCharts();
+            populateDataTable();
+            updateInspector('all');
+        };
+
+        function initCharts() {
+            // Population Bar Chart
+            const ctxPop = document.getElementById('populationChart').getContext('2d');
+            popChartInstance = new Chart(ctxPop, {
+                type: 'bar',
+                data: {
+                    labels: ['Kota Sorong', 'Kab. Sorong', 'Raja Ampat', 'Sorong Selatan', 'Maybrat', 'Tambrauw'],
+                    datasets: [{
+                        label: 'Jumlah Penduduk (Jiwa)',
+                        data: [289420, 124890, 66210, 54120, 44310, 28500],
+                        backgroundColor: [
+                            'rgba(124, 58, 237, 0.8)',
+                            'rgba(22, 163, 74, 0.8)',
+                            'rgba(2, 132, 199, 0.8)',
+                            'rgba(219, 39, 119, 0.8)',
+                            'rgba(217, 119, 6, 0.8)',
+                            'rgba(13, 148, 136, 0.8)'
+                        ],
+                        borderRadius: 8,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+
+            // Area Doughnut Chart
+            const ctxArea = document.getElementById('areaChart').getContext('2d');
+            areaChartInstance = new Chart(ctxArea, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Kota Sorong', 'Kab. Sorong', 'Raja Ampat', 'Sorong Selatan', 'Maybrat', 'Tambrauw'],
+                    datasets: [{
+                        data: [1105, 65361, 60844, 7781, 5461, 11529],
+                        backgroundColor: [
+                            '#7c3aed', '#16a34a', '#0284c7', '#db2777', '#d97706', '#0d9488'
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: { boxWidth: 12, font: { size: 11 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        function highlightInfo(regionKey) {
+            const data = regionsData[regionKey];
+            if (!data) return;
+            document.getElementById('inspectorStatus').innerText = "Pratinjau Sorotan";
+            document.getElementById('cardTitle').innerText = data.name;
+            document.getElementById('cardSubtitle').innerText = data.subtitle;
+            document.getElementById('statArea').innerText = data.area;
+            document.getElementById('statPop').innerText = data.population;
+            document.getElementById('cardDesc').innerText = data.desc;
+        }
+
+        function clearHighlight() {
+            updateInspector(currentSelectedRegion);
+        }
+
+        function selectRegion(regionKey) {
+            currentSelectedRegion = regionKey;
+            document.getElementById('regionSelect').value = regionKey;
+            updateInspector(regionKey);
+            openCurrentRegionModal();
+        }
+
+        function handleRegionDropdownChange(val) {
+            currentSelectedRegion = val;
+            updateInspector(val);
+        }
+
+        function updateInspector(regionKey) {
+            const data = regionsData[regionKey];
+            if (!data) return;
+            
+            document.getElementById('inspectorStatus').innerText = regionKey === 'all' ? 'Provinsi Keseluruhan' : 'Wilayah Terpilih';
+            document.getElementById('cardTitle').innerText = data.name;
+            document.getElementById('cardSubtitle').innerText = data.subtitle;
+            document.getElementById('statArea').innerText = data.area;
+            document.getElementById('statPop').innerText = data.population;
+            document.getElementById('cardDesc').innerText = data.desc;
+        }
+
+        function switchLayer(layerType) {
+            const badge = document.getElementById('activeLayerBadge');
+            const subtitle = document.getElementById('mapSubtitle');
+            
+            switch(layerType) {
+                case 'admin':
+                    badge.innerText = "Layer: Batas Administrasi";
+                    subtitle.innerText = "Menampilkan batas wilayah kabupaten/kota dan ibukota otonom";
+                    break;
+                case 'marine':
+                    badge.innerText = "Layer: Bahari & Pariwisata";
+                    subtitle.innerText = "Menampilkan kawasan konservasi perairan, gugusan pulau, dan spot selam";
+                    break;
+                case 'forestry':
+                    badge.innerText = "Layer: Kehutanan & Konservasi";
+                    subtitle.innerText = "Menampilkan hutan lindung, suaka margasatwa, dan cagar alam";
+                    break;
+                case 'industry':
+                    badge.innerText = "Layer: KEK & Infrastruktur";
+                    subtitle.innerText = "Menampilkan Kawasan Ekonomi Khusus Aimas, pelabuhan, dan jalur logistik";
+                    break;
+                case 'density':
+                    badge.innerText = "Layer: Kepadatan Penduduk";
+                    subtitle.innerText = "Visualisasi tingkat kepadatan demografi per wilayah administratif";
+                    break;
+            }
+        }
+
+        function resetMapView() {
+            currentSelectedRegion = 'all';
+            document.getElementById('regionSelect').value = 'all';
+            document.getElementById('layerSelect').value = 'admin';
+            switchLayer('admin');
+            updateInspector('all');
+        }
+
+        function openCurrentRegionModal() {
+            const data = regionsData[currentSelectedRegion];
+            if (!data) return;
+
+            document.getElementById('modalTitle').innerText = data.name;
+            document.getElementById('modalSubtitle').innerText = data.subtitle;
+            document.getElementById('modalArea').innerText = data.area;
+            document.getElementById('modalPop').innerText = data.population;
+            document.getElementById('modalDensity').innerText = data.density;
+            document.getElementById('modalDistricts').innerText = data.districts;
+            document.getElementById('modalDesc').innerText = data.desc;
+            document.getElementById('modalCoords').innerText = data.coordsStr || data.coords;
+            
+            // Icon
+            document.getElementById('modalIconBox').innerHTML = `<i class="fa-solid ${data.icon}"></i>`;
+
+            // Sectors
+            const sectorsContainer = document.getElementById('modalSectors');
+            sectorsContainer.innerHTML = '';
+            data.sectors.forEach(sector => {
+                const span = document.createElement('span');
+                span.className = 'bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold px-3 py-1.5 rounded-xl';
+                span.innerText = sector;
+                sectorsContainer.appendChild(span);
+            });
+
+            document.getElementById('regionModal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('regionModal').classList.add('hidden');
+        }
+
+        function openInfoModal() {
+            document.getElementById('infoModal').classList.remove('hidden');
+        }
+
+        function closeInfoModal() {
+            document.getElementById('infoModal').classList.add('hidden');
+        }
+
+        function toggleDataTableView() {
+            isTableOpen = !isTableOpen;
+            const section = document.getElementById('dataTableSection');
+            const btnText = document.getElementById('toggleTableText');
+            if (isTableOpen) {
+                section.classList.remove('hidden');
+                btnText.innerText = "Tutup Tabel Data";
+                section.scrollIntoView({ behavior: 'smooth' });
+            } else {
+                section.classList.add('hidden');
+                btnText.innerText = "Buka Tabel Data";
+            }
+        }
+
+        function populateDataTable() {
+            const tbody = document.getElementById('regionsTableBody');
+            const tableRows = [
+                { key: 'kota_sorong', name: 'Kota Sorong', capital: 'Kota Sorong', area: '1.105 km²', pop: '289.420', density: '261.92', sector: 'Perdagangan, Jasa, Pelabuhan' },
+                { key: 'kab_sorong', name: 'Kabupaten Sorong', capital: 'Aimas', area: '65.361 km²', pop: '124.890', density: '1.91', sector: 'KEK Aimas, Migas, Perkebunan' },
+                { key: 'raja_ampat', name: 'Kabupaten Raja Ampat', capital: 'Waisai', area: '60.844 km²', pop: '66.210', density: '1.08', sector: 'Pariwisata Bahari & Konservasi' },
+                { key: 'sorong_selatan', name: 'Kabupaten Sorong Selatan', capital: 'Teminabuan', area: '7.781 km²', pop: '54.120', density: '6.95', sector: 'Kehutanan, Sagu, Perkebunan' },
+                { key: 'maybrat', name: 'Kabupaten Maybrat', capital: 'Kumurkek', area: '5.461 km²', pop: '44.310', density: '8.11', sector: 'Pertanian Hortikultura & Danau' },
+                { key: 'tambrauw', name: 'Kabupaten Tambrauw', capital: 'Fef', area: '11.529 km²', pop: '28.500', density: '2.47', sector: 'Kabupaten Konservasi & Kehutanan' }
+            ];
+
+            tbody.innerHTML = '';
+            tableRows.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition-colors border-b border-slate-100';
+                tr.innerHTML = `
+                    <td class="p-3 font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-location-dot text-emerald-600"></i> ${row.name}</td>
+                    <td class="p-3">${row.capital}</td>
+                    <td class="p-3">${row.area}</td>
+                    <td class="p-3 font-semibold text-slate-800">${row.pop}</td>
+                    <td class="p-3">${row.density}</td>
+                    <td class="p-3"><span class="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-md text-[11px] font-medium">${row.sector}</span></td>
+                    <td class="p-3 text-center">
+                        <button onclick="currentSelectedRegion='${row.key}'; openCurrentRegionModal();" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold px-3 py-1.5 rounded-lg transition-all text-xs">
+                            Detail
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterDataTable() {
+            const input = document.getElementById('tableSearchInput').value.toLowerCase();
+            const tbody = document.getElementById('regionsTableBody');
+            const trs = tbody.getElementsByTagName('tr');
+
+            for (let i = 0; i < trs.length; i++) {
+                const text = trs[i].innerText.toLowerCase();
+                if (text.includes(input)) {
+                    trs[i].style.display = "";
+                } else {
+                    trs[i].style.display = "none";
+                }
+            }
+        }
+    </script>
+</body>
+</html>
